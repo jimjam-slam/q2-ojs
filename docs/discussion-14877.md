@@ -94,11 +94,29 @@ Roughly in order of impact:
      preview compiles in the browser, but I'm not sure it's intended.
 
 6. **Extension-contributed preview components.** Documents currently have to
-   list the component in `render-components:` themselves (as
-   `\_extensions/…`, since front matter is parsed as markdown). The
-   `components:` preview half (bd-s73m7at2) or an extension `contributes` key
-   would remove that, and avoid relying on the experimental
-   `__Q2_PREVIEW_RENDERER__` global.
+   list the component in their own front matter (as `\_extensions/…`, since
+   front matter is parsed as markdown). The routes that look like they should
+   make it automatic don't reach the live preview yet:
+   `contributes: metadata: render-components:` in `_extension.yml` merges into
+   every document (it shows up in `q2 get-config`), and so does
+   `render-components:` in `_quarto.yml`, but the preview ignores both. Two
+   small changes would fix it:
+   - add `render-components` to `FORMAT_PATH_KEYS` in
+     `crates/quarto-core/src/project/format_paths.rs` (one line, alongside
+     `components`), so extension-relative paths get rebased. A project-root
+     path otherwise depends on install location: `q2 add` puts this extension
+     in `_extensions/jimjam-slam/ojs/`, a manual copy in `_extensions/ojs/`.
+   - have `extractRenderComponentPaths`
+     (`ts-packages/preview-renderer/src/utils/renderComponents.ts`) accept
+     plain strings. It only reads markdown inlines (`.c[0].c`), which is what
+     front-matter strings become, but `_quarto.yml` and `_extension.yml` values
+     are kept literal (`InterpretationContext::ProjectConfig`), so paths from
+     either are silently dropped.
+
+   With both, the extension could contribute its own preview component and live
+   preview would need no setup. Longer term, the `components:` preview half
+   (bd-s73m7at2) would let it bind to `.ojs-cell` Divs instead, without
+   relying on the experimental `__Q2_PREVIEW_RENDERER__` global.
 
 7. **Minor:** inside code blocks, the engine `MappedString` maps every offset
    one character later than the source (the engine works around it by mapping

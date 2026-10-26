@@ -41,9 +41,29 @@ listed below.
 
 ## Installing
 
-Copy `_extensions/ojs/` into your project's `_extensions/` folder (for a single
-document outside a project, into the document's own folder). The built files
-in `_extensions/ojs/dist/` are committed, so no build step is needed.
+Use q2's `q2 add`, from your project's folder (for a single document outside a
+project, from the document's folder):
+
+```bash
+q2 add jimjam-slam/q2-ojs        # from GitHub
+q2 add path/to/q2-ojs            # from a local checkout or a .zip/.tar.gz of one
+```
+
+Where it lands matters for live preview (see below):
+
+| Installed from | Installed to |
+|---|---|
+| GitHub (`q2 add jimjam-slam/q2-ojs`) | `_extensions/jimjam-slam/ojs/` |
+| A local folder or archive | `_extensions/ojs/` |
+
+Copying `_extensions/ojs/` into your project's `_extensions/` folder by hand
+works too. The built files in `_extensions/ojs/dist/` are committed, so no
+build step is needed. (The TypeScript sources in `src/` come along; nothing
+uses them at render time.)
+
+Quarto 1's `quarto add` won't install it: Quarto 1's extension schema rejects
+the static engine keys q2 uses (`name`, `claims` and so on). `q2 install` is
+only for TinyTeX and Chromium.
 
 ## Writing cells
 
@@ -93,22 +113,38 @@ As in Quarto 1, data frames arrive column-oriented and `transpose()` turns them
 into rows. **The `engine: [knitr, ojs]` line is required** for `ojs_define`:
 see the known gaps below.
 
-### Live preview
+### Live preview (optional)
 
-Add the preview component to the front matter of documents you want to
-preview:
+Rendered pages, and `q2 preview --static`, work without any extra setup. The
+live `q2 preview` is different: it draws pages in the browser and doesn't
+re-run engines as you type, so on its own it shows OJS cells as plain code.
+
+Adding the preview component makes OJS cells run in live preview too:
+
+- cells update as you edit, without re-executing anything;
+- inputs keep their state (a slider's value, say) across unrelated edits;
+- a cell that stops compiling while you type keeps its last good output under
+  an error badge.
+
+Add it to the front matter of each document you want to preview this way
+(`_quarto.yml` doesn't work for this yet; see the known gaps):
 
 ```yaml
 render-components:
   - \_extensions/ojs/dist/ojs-preview.tsx
 ```
 
-The backslash matters: q2 parses front-matter strings as markdown, and a
-leading `_` would start emphasis. In live preview, cells are compiled in the
-browser, so edits show up without re-executing anything. While you edit, a cell
-that stops compiling keeps showing its last good output under an error badge.
+The path is relative to the document and depends on where the extension was
+installed: from GitHub, it's `\_extensions/jimjam-slam/ojs/dist/ojs-preview.tsx`.
+For a document in a subfolder, start it from the project root with a `/`
+(`/\_extensions/ojs/dist/ojs-preview.tsx`).
+
+Keep the backslash before the leading `_`. q2 parses front-matter strings as
+markdown, quoted or not, so `"_extensions/…"` starts emphasis and fails; the
+backslash escapes it.
+
 The first time a page with OJS cells is previewed, Notebook Kit is loaded from
-jsDelivr (pinned to 2.8.0).
+jsDelivr (pinned to 2.8.0), so live preview needs the network at that point.
 
 ## Known gaps
 
@@ -131,8 +167,27 @@ jsDelivr (pinned to 2.8.0).
 - **Errors are all-or-nothing at render time.** q2 drops warnings from
   TypeScript engines, so the engine can't report a problem without failing the
   render.
-- **The preview component must be listed in each document** (`render-components:`);
-  an extension can't contribute it.
+- **The preview component must be listed in each document's front matter.**
+  Neither route that should make it automatic reaches the live preview yet.
+  `contributes: metadata: render-components:` in `_extension.yml` merges into
+  every document (`q2 get-config` shows it), and so does `render-components:` in
+  `_quarto.yml`, but the preview ignores both. Two small q2 changes would fix it:
+  - add `render-components` to `FORMAT_PATH_KEYS`
+    (`crates/quarto-core/src/project/format_paths.rs`), as `components` already
+    is, so an extension-relative path like `dist/ojs-preview.tsx` is rebased; a
+    project-root path would otherwise depend on where the extension was
+    installed (`q2 add jimjam-slam/q2-ojs` installs to
+    `_extensions/jimjam-slam/ojs/`);
+  - make the preview read plain strings as well as markdown. Front-matter
+    strings are parsed as markdown, but `_quarto.yml` and `_extension.yml`
+    values are kept literal (q2's `InterpretationContext`), and the preview
+    only reads markdown inlines (`.c[0].c` in `extractRenderComponentPaths`,
+    `ts-packages/preview-renderer/src/utils/renderComponents.ts`), so it
+    silently drops paths from either file.
+
+  With both, this extension's `_extension.yml` could contribute the component,
+  and every document in a project with the extension installed would get live
+  preview without any setup.
 - **Live preview crashes when a multi-engine document fails.** If a document with
   `engine: [knitr, ojs]` has an error in either engine, q2's preview UI goes blank
   ("Minified React error #31"). Single-engine failures are handled fine.
