@@ -1,0 +1,15 @@
+---
+title: Syntax errors
+---
+
+Some text first.
+
+```{ojs2}
+//| echo: false
+const x = 1;
+const = ;
+```
+
+```{ojs1}
+y = 1; z = 2
+```

@@ -1,0 +1,11 @@
+---
+title: Duplicate names
+---
+
+```{ojs2}
+const x = 1;
+```
+
+```{ojs1}
+viewof x = Inputs.range([0, 1])
+```

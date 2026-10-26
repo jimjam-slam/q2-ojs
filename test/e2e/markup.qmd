@@ -1,0 +1,19 @@
+---
+title: Markup
+---
+
+```{ojs1}
+viewof n = Inputs.range([0, 10], {value: 4, step: 1})
+```
+
+```{ojs2}
+//| echo: false
+const doubled = n * 2;
+display(doubled);
+```
+
+```{ojs2}
+//| label: summary
+//| output: false
+const summary = `n is ${n}`;
+```
