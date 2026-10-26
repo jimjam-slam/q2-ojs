@@ -10,10 +10,13 @@
 
 import { library } from "@observablehq/notebook-kit/runtime";
 import { require as d3Require } from "d3-require";
+import { transpose } from "./data.ts";
 
 export type Builtins = Record<string, () => unknown>;
 
 export const builtins: Builtins = {
   ...(library as Builtins),
   require: () => d3Require,
+  // Quarto 1's helper for column-oriented `ojs_define` data frames.
+  transpose: () => transpose,
 };

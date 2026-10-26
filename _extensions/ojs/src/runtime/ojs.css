@@ -12,3 +12,21 @@
 .ojs-cell > script.ojs-def {
   display: none;
 }
+
+/* A compile error: shown over the cell's last good output while editing. */
+.ojs-cell-badge {
+  margin: 0.25rem 0;
+  padding: 0.25rem 0.5rem;
+  border-left: 3px solid #c0392b;
+  background: #fdf1f0;
+  color: #8e2a20;
+  font: 0.85em/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ojs-cell-badge {
+    background: #3a1f1d;
+    color: #f2b8b2;
+  }
+}

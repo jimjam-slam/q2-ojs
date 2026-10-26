@@ -92,11 +92,15 @@ On a rendered page the bootstrap SHALL reconcile all `.ojs-cell` elements once a
 - **THEN** every cell's output appears in its `.ojs-output`, and no transpiler code is loaded
 
 ### Requirement: ojs_define data intake
-The runtime SHALL read every `script[type="ojs-define"]` on the page and define each named value as a variable available to cells. Data frames SHALL be converted to row arrays as Quarto 1 did.
+The runtime SHALL read every `script[type="ojs-define"]` on the page (Quarto 1's payload, `{"contents": [{"name": …, "value": …}]}`) and define each named value, unchanged, as a variable available to cells. As in Quarto 1, data frames arrive column-oriented (`{column: [values]}`), and the runtime SHALL provide a `transpose` built-in that turns them into an array of row objects.
 
 #### Scenario: R data frame to OJS
-- **WHEN** an `{r}` cell calls `ojs_define(cars = mtcars)` and an `{ojs2}` cell references `cars`
-- **THEN** `cars` is an array of row objects in the OJS cell
+- **WHEN** an `{r}` cell calls `ojs_define(cars = head(mtcars, 3))` and an `{ojs2}` cell references `cars`
+- **THEN** `cars` is the column-oriented object `{mpg: [...], cyl: [...], …}`, and `transpose(cars)` is an array of 3 row objects
+
+#### Scenario: Several payloads
+- **WHEN** a page has two `ojs-define` scripts defining `a` and `b`
+- **THEN** cells can reference both `a` and `b`
 
 ### Requirement: Disposal
 The runtime SHALL dispose itself when the page unloads or the preview navigates to another document, and SHALL NOT dispose on content updates.

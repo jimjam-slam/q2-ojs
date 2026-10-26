@@ -33,14 +33,14 @@
 
 ## 4. Runtime bootstrap
 
-- [ ] 4.1 Implement the `globalThis.__q2ojs` singleton around `NotebookRuntime`, with `upsert`/`release` and a microtask-scheduled reconcile
-- [ ] 4.2 Implement the reconcile order: delete released/changed, define new, reparent output nodes, skip unchanged
-- [ ] 4.3 Implement runtime-owned output nodes and last-good-definition with an error badge
-- [ ] 4.3b Implement `output: false` as "hide values, show errors" (a custom observer around Notebook Kit's), and check `echo: false` cells still show errors
-- [ ] 4.4 Implement static initialization: scan `.ojs-cell` and define from `script.ojs-def` on DOM ready
-- [ ] 4.5 Implement `ojs_define` intake from `script[type="ojs-define"]`, including Quarto 1's data-frame transpose
-- [ ] 4.6 Implement disposal on page unload
-- [ ] 4.7 Test the reconciler in jsdom or a headless browser: no-op batch, edit with dependent recompute, removal stopping a generator, host swap without recompute, duplicate-name safety
+- [x] 4.1 Implement the `globalThis.__q2ojs` singleton around `NotebookRuntime`, with `upsert`/`release` and a microtask-scheduled reconcile (`src/runtime/reconciler.ts`, `src/runtime/singleton.ts`)
+- [x] 4.2 Implement the reconcile order: delete released/changed, define new, reparent output nodes, skip unchanged
+- [x] 4.3 Implement runtime-owned output nodes and last-good-definition with an error badge (output node holds a badge, an error area and the values; compile errors keep the last good definition)
+- [x] 4.3b Implement `output: false` as "hide values, show errors" (a custom observer around Notebook Kit's), and check `echo: false` cells still show errors (wraps Notebook Kit's observer: values hidden, errors copied to a visible area)
+- [x] 4.4 Implement static initialization: scan `.ojs-cell` and define from `script.ojs-def` on DOM ready (`src/runtime/bootstrap.ts`)
+- [x] 4.5 Implement `ojs_define` intake from `script[type="ojs-define"]` (values unchanged, column-oriented like Quarto 1) and Quarto 1's `transpose` built-in (`src/runtime/data.ts`; `transpose` in `builtins.ts`)
+- [x] 4.6 Implement disposal on page unload (on `pagehide`, unless the page is kept in the back/forward cache)
+- [x] 4.7 Test the reconciler in jsdom or a headless browser: no-op batch, edit with dependent recompute, removal stopping a generator, host swap without recompute, duplicate-name safety (`test/unit/reconciler.test.ts`, 18 tests in jsdom; the viewof-state test skips in Node, see S13)
 - [x] 4.8 Bundle the bootstrap as one IIFE with inspector CSS (done in S11: `scripts/build.mjs`, with `dot`/`leaflet` rerouted to pinned jsDelivr copies)
 
 ## 5. Preview integration

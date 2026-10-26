@@ -11,3 +11,11 @@ nrow(mtcars)
 ```{ojs2}
 display(cars);
 ```
+
+```{ojs1}
+rows = transpose(cars)
+```
+
+```{ojs2}
+display(`First row: ${rows[0].mpg} mpg, ${rows[0].cyl} cylinders`);
+```
