@@ -45,12 +45,12 @@
 
 ## 5. Preview integration
 
-- [ ] 5.1 Implement the `CodeBlock` override: recognize `.ojs-source` and raw `{ojs1}`/`{ojs2}` blocks, and delegate the rest
-- [ ] 5.2 Lazy-load Notebook Kit from a pinned ESM URL; debounce in-browser compiles
-- [ ] 5.3 Thin host: echo and an empty host element; `upsert` on mount/update, `release` on unmount; CSS hiding static siblings in preview
-- [ ] 5.3b Detect duplicate definitions in the reconcile batch (sharing 3.3b's name logic), mark every defining cell with an error, and skip defining them until resolved
-- [ ] 5.4 Build the single-file preview component from the shared sources as a `.tsx` file with no static imports (S6)
-- [ ] 5.5 Test key agreement: engine-emitted keys equal browser-computed keys over every example document
+- [x] 5.1 Implement the `CodeBlock` override: recognize `.ojs-source` and raw `{ojs1}`/`{ojs2}` blocks, and delegate the rest (`src/preview/component.tsx`; non-OJS blocks go to `previewRegistry.CodeBlock`, so mermaid still draws)
+- [x] 5.2 Lazy-load Notebook Kit from a pinned ESM URL; debounce in-browser compiles (Notebook Kit from pinned jsDelivr URLs inside a lazily imported runtime module; the debounce lives in the registry, S14)
+- [x] 5.3 Thin host: echo and an empty host element; `upsert` on mount/update, `release` on unmount; CSS hiding static siblings in preview (registration goes through the host registry, `src/preview/hosts.ts`)
+- [x] 5.3b Detect duplicate definitions in the reconcile batch (sharing 3.3b's name logic), mark every defining cell with an error, and skip defining them until resolved (duplicates, and edits that break a cell, keep the last good version under a badge; S14)
+- [x] 5.4 Build the single-file preview component from the shared sources as a `.tsx` file with no static imports (S6) (`dist/ojs-preview.tsx`, 15 KB)
+- [x] 5.5 Test key agreement: engine-emitted keys equal browser-computed keys over every example document (`test/unit/hosts.test.ts`: raw, engine and mixed forms all match the engine's keys)
 
 ## 6. Examples and end-to-end verification
 

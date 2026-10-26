@@ -1,5 +1,33 @@
 /* Cell markup styles (design D3). Bundled into ojs-runtime.css. */
 
+/* Notebook Kit's inspector (how values and errors are shown). */
+@import "@observablehq/notebook-kit/inspector.css";
+
+/* The theme variables the inspector reads, from Notebook Kit's default
+   light and dark styles (global.css, syntax-*.css, abstract-*.css), scoped to
+   cell output so they don't touch the rest of the page. */
+.ojs-cell-output {
+  --monospace-font: 0.875em/1.5 var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  --syntax-keyword: #e36209;
+  --syntax-literal: #6f42c1;
+  --syntax-string: #22863a;
+  --syntax-comment: #6a737d;
+  --syntax-definition: #005cc5;
+  --theme-background-alt: #f6f8fa;
+  --theme-error: #e7040f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ojs-cell-output {
+    --syntax-keyword: #ffa657;
+    --syntax-literal: #d2a8ff;
+    --syntax-string: #7ee787;
+    --syntax-comment: #8b949e;
+    --syntax-definition: #79c0ff;
+    --theme-background-alt: #161b22;
+  }
+}
+
 /* `//| echo: false` hides the source; the cell still runs. q2 wraps code
    blocks (for example in `.code-copy-outer-scaffold`), so hide whichever
    child holds the source, never the output. */
@@ -10,6 +38,12 @@
 
 /* The compiled payload is data, never shown. */
 .ojs-cell > script.ojs-def {
+  display: none;
+}
+
+/* In the live preview, the engine's static output placeholder stays empty
+   (the preview hosts the cell itself), so take it out of the layout. */
+.ojs-cell .ojs-output:empty {
   display: none;
 }
 

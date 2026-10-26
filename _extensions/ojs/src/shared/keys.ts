@@ -29,15 +29,23 @@ export interface KeyInput {
   options: Record<string, OptionValue>;
 }
 
+/** A key without its occurrence: the label if there is one, else the hash. */
+export function keyBase({ body, options }: KeyInput): string {
+  const label = options.label;
+  return label !== undefined && String(label).trim() !== "" ? `label:${String(label).trim()}` : hash(normalizeBody(body));
+}
+
+/** Split a key into its base and occurrence. */
+export function splitKey(key: string): { base: string; occurrence: number } {
+  const at = key.lastIndexOf(":");
+  return { base: key.slice(0, at), occurrence: Number(key.slice(at + 1)) };
+}
+
 /** Compute every cell's key, in document order. */
 export function cellKeys(cells: readonly KeyInput[]): string[] {
   const seen = new Map<string, number>();
-  return cells.map(({ body, options }) => {
-    const label = options.label;
-    const base =
-      label !== undefined && String(label).trim() !== ""
-        ? `label:${String(label).trim()}`
-        : hash(normalizeBody(body));
+  return cells.map((cell) => {
+    const base = keyBase(cell);
     const occurrence = seen.get(base) ?? 0;
     seen.set(base, occurrence + 1);
     return `${base}:${occurrence}`;

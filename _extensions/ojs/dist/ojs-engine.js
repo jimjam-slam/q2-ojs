@@ -14347,15 +14347,17 @@ function hash(text        , seed = 0)         {
                                        
  
 
+/** A key without its occurrence: the label if there is one, else the hash. */
+function keyBase({ body, options }          )         {
+  const label = options.label;
+  return label !== undefined && String(label).trim() !== "" ? `label:${String(label).trim()}` : hash(normalizeBody(body));
+}
+
 /** Compute every cell's key, in document order. */
 function cellKeys(cells                     )           {
   const seen = new Map                ();
-  return cells.map(({ body, options }) => {
-    const label = options.label;
-    const base =
-      label !== undefined && String(label).trim() !== ""
-        ? `label:${String(label).trim()}`
-        : hash(normalizeBody(body));
+  return cells.map((cell) => {
+    const base = keyBase(cell);
     const occurrence = seen.get(base) ?? 0;
     seen.set(base, occurrence + 1);
     return `${base}:${occurrence}`;
