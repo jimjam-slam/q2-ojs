@@ -1,5 +1,6 @@
 ---
-title: "Spike: knitr + ojs2"
+title: "ojs_define from R (knitr runs first)"
+engine: [knitr, ojs]
 ---
 
 ```{r}

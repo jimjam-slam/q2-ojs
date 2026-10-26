@@ -10,24 +10,26 @@
 ## 1b. Follow-ups from the spikes
 
 - [x] 1b.1 Decide the knitr ordering issue: accepted as a limitation (`engine: [knitr, ojs]` for `ojs_define`); spec and design updated; upstream ask goes in 7.3
-- [ ] 1b.2 Add a `require` builtin (jsDelivr-backed) to the runtime, for Quarto 1 `require("…")` cells
-- [ ] 1b.3 Replace the dev symlink `examples/_extensions/ojs` with a copy produced by the build, so the preview syncs the component
-- [ ] 1b.4 Remove the spike scaffolding (`_extensions/ojs/spike/`, `examples/spike-*.qmd`) once the real engine replaces it
+- [x] 1b.2 Add a `require` builtin (jsDelivr-backed) to the runtime, for Quarto 1 `require("…")` cells (`src/runtime/builtins.ts`; browser check `test/browser/require.entry.ts`; surfaced S9)
+- [x] 1b.3 Replace the dev symlink `examples/_extensions/ojs` with a copy produced by the build, so the preview syncs the component (`npm run build` → `scripts/build.mjs`; `examples/_extensions/` git-ignored)
+- [x] 1b.5 Spike: ship the runtime's ES-module chunks with the rendered page (decided 2026-10-26: no network needed for features that don't need it). Shipped first as per-page supporting files (S10), then as one classic script in an html dependency shared via `site_libs` (S11); D6 revised
+- [x] 1b.6 Decide on the standard library's network use: leave Notebook Kit's CDN loading as is for now (decided 2026-10-26). Follow-up, out of scope: bundle libraries locally, keyed to the relevant Quarto options
+- [x] 1b.4 Remove the spike scaffolding: probes and their engine dependency removed; `spike-preview.qmd` and the failing `spike-knitr.qmd` deleted; the two working documents kept as fixtures (`examples/claims.qmd`, `examples/knitr-ojs-define.qmd`)
 
 ## 2. Shared core module
 
-- [ ] 2.1 Write the cell-option parser (`//| echo`, `output`, `label`) and source normalization
-- [ ] 2.2 Write the synchronous hash and the key function (hash + occurrence; label override), with unit tests for duplicates, labels, and option-line insensitivity
-- [ ] 2.3 Write the mode mapping (`ojs1`→`ojs`, `ojs2`→`js`) and a `compileCell` wrapper around Notebook Kit `transpile` that returns either a definition or a structured error with a line number
+- [x] 2.1 Write the cell-option parser (`//| echo`, `output`, `label`) and source normalization (`src/shared/cell.ts`, 8 tests)
+- [x] 2.2 Write the synchronous hash and the key function (hash + occurrence; label override), with unit tests for duplicates, labels, and option-line insensitivity (`src/shared/keys.ts`, cyrb53 checked against its published reference values; 9 tests)
+- [x] 2.3 Write the mode mapping (`ojs1`→`ojs`, `ojs2`→`js`) and a `compileCell` wrapper around Notebook Kit `transpile` that returns either a definition or a structured error with a line number (`src/shared/compile.ts`, plus `definedNames` for 3.3b/5.3b; 11 tests). Bundles for Node via `q2 call build-ts-extension` (444 KB engine) and for the browser via esbuild (504 KB, no jsdom/Vite)
 
 ## 3. Engine (render path)
 
-- [ ] 3.1 Implement engine discovery/launch and `execute()`: scan the markdown for owned cells, leave everything else byte-identical
-- [ ] 3.2 Emit the `.ojs-cell` markup (source block with key, mode and echo attributes; `.ojs-output`; `script.ojs-def` JSON, escaped for `<`)
-- [ ] 3.3 Fail the render on compile errors: map each cell's in-cell `loc` to `file:line:column`, collect every broken cell, and throw one error listing them
-- [ ] 3.3b Detect names defined by more than one cell across `ojs1`/`ojs2` (counting `viewof x`/`mutable x` as also defining `x`) and report them in the same render error; unit-test each spec scenario
-- [ ] 3.4 Attach the static bootstrap and inspector CSS via `html_dependencies` only when the document has owned cells
-- [ ] 3.5 Build the engine bundle (`q2 call build-ts-extension`, or rollup with the documented settings) and add engine unit tests over fixture markdown
+- [x] 3.1 Implement engine discovery/launch and `execute()`: scan the markdown for owned cells, leave everything else byte-identical (`src/engine/scan.ts`: CommonMark fences, skips cells inside other code blocks; 13 tests)
+- [x] 3.2 Emit the `.ojs-cell` markup (source block with key, mode and echo attributes; `.ojs-output`; `script.ojs-def` JSON, escaped for `<`) (`src/engine/transform.ts`; also escapes U+2028/2029, grows fences past backtick runs, keeps indentation; echo CSS in `src/runtime/ojs.css`)
+- [x] 3.3 Fail the render on compile errors: map each cell's in-cell `loc` to `file:line:column`, collect every broken cell, and throw one error listing them (maps only the fence line through q2's source map; S12)
+- [x] 3.3b Detect names defined by more than one cell across `ojs1`/`ojs2` (counting `viewof x`/`mutable x` as also defining `x`) and report them in the same render error; unit-test each spec scenario
+- [x] 3.4 Ship the runtime only when the document has owned cells, as the html dependency `ojs-runtime` (script plus CSS; prototype from S11 in place); add a unit test that documents without OJS cells get no dependency
+- [x] 3.5 Build the engine bundle (`q2 call build-ts-extension`, or rollup with the documented settings) and add engine unit tests over fixture markdown (`test/unit/engine.test.ts`; end-to-end fixtures in `test/e2e/`, results in S12)
 
 ## 4. Runtime bootstrap
 
@@ -39,7 +41,7 @@
 - [ ] 4.5 Implement `ojs_define` intake from `script[type="ojs-define"]`, including Quarto 1's data-frame transpose
 - [ ] 4.6 Implement disposal on page unload
 - [ ] 4.7 Test the reconciler in jsdom or a headless browser: no-op batch, edit with dependent recompute, removal stopping a generator, host swap without recompute, duplicate-name safety
-- [ ] 4.8 Bundle the bootstrap as one IIFE with inspector CSS
+- [x] 4.8 Bundle the bootstrap as one IIFE with inspector CSS (done in S11: `scripts/build.mjs`, with `dot`/`leaflet` rerouted to pinned jsDelivr copies)
 
 ## 5. Preview integration
 

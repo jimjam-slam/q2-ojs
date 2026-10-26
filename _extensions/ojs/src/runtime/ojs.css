@@ -1,0 +1,14 @@
+/* Cell markup styles (design D3). Bundled into ojs-runtime.css. */
+
+/* `//| echo: false` hides the source; the cell still runs. q2 wraps code
+   blocks (for example in `.code-copy-outer-scaffold`), so hide whichever
+   child holds the source, never the output. */
+.ojs-cell[data-ojs-echo="false"] > .ojs-source,
+.ojs-cell[data-ojs-echo="false"] > :not(.ojs-output):has(.ojs-source) {
+  display: none;
+}
+
+/* The compiled payload is data, never shown. */
+.ojs-cell > script.ojs-def {
+  display: none;
+}

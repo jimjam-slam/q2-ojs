@@ -1,6 +1,12 @@
 /q2/
 /.tools/
 /examples/.quarto/
+/examples/_extensions/
 .DS_Store
 node_modules/
-
+/examples/*.html
+/examples/*_files/
+/test/e2e/_extensions/
+/test/e2e/*.html
+/test/e2e/*_files/
+/test/e2e/.quarto/

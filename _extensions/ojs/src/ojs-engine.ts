@@ -1,12 +1,13 @@
 /**
  * ojs-engine: q2 engine extension for Observable JavaScript.
  *
- * Spike stage (tasks 1.3, 1.4): claims `ojs1`/`ojs2`, wraps each owned cell
- * in a marker Div that records its mode, and attaches one html dependency so
- * we can see how q2 emits engine scripts. No compilation yet.
+ * Claims `{ojs1}` and `{ojs2}` cells, compiles them with Notebook Kit at
+ * render time, replaces each with the cell markup (design D3), and ships the
+ * page runtime as an html dependency (D6). Compile errors and names defined
+ * in more than one cell fail the render (D5).
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,21 +20,68 @@ import type {
   EngineProjectContext,
   PartitionedMarkdown,
   Format,
+  MappedString,
   QuartoAPI,
   LanguageClaim,
 } from "@quarto/types";
 
-const MODES: Record<string, string> = { ojs1: "ojs", ojs2: "js" };
+import { isOjsLanguage } from "./shared/compile.ts";
+import { formatProblems, transformDocument, type Locate } from "./engine/transform.ts";
 
 // Inlined from `@quarto/api/claims` (`primary(1)`): the package isn't
 // published, so an installed q2 can't bundle value imports from it.
 const PRIMARY: LanguageClaim = { kind: "primary", priority: 1 };
 
-const extDir = join(dirname(fileURLToPath(import.meta.url)), "..");
-
 let quarto: QuartoAPI | undefined;
 
-const CELL = /^```\{(ojs[12])\}[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
+// The built page runtime, next to this bundle (dist/runtime/).
+const RUNTIME_DIR = join(dirname(fileURLToPath(import.meta.url)), "runtime");
+
+/**
+ * The page runtime as an html dependency (design D6): one classic script plus
+ * its stylesheet. q2 stores it once per site, in `site_libs`.
+ */
+export function runtimeDependency() {
+  const css = join(RUNTIME_DIR, "ojs-runtime.css");
+  return {
+    name: "ojs-runtime",
+    scripts: [join(RUNTIME_DIR, "ojs-runtime.js")],
+    stylesheets: existsSync(css) ? [css] : [],
+  };
+}
+
+/**
+ * Map offsets in the markdown q2 hands us back to the user's file. q2
+ * re-serializes the document, so its lines don't match the source; the
+ * MappedString carries the source map. Unmappable offsets fall back to the
+ * nearest mapped position, then to the file name alone.
+ */
+export function locatorFor(markdown: MappedString, fallbackFile: string): Locate {
+  return (offset) => {
+    const mapped = markdown.map(offset, true);
+    if (!mapped) return { file: fallbackFile };
+    const text = mapped.originalString.value;
+    const before = text.slice(0, mapped.index);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    return {
+      file: mapped.originalString.fileName ?? fallbackFile,
+      line: before.split("\n").length,
+      column: mapped.index - lineStart + 1,
+    };
+  };
+}
+
+/** The engine's execute step, separated from the q2 plumbing for testing. */
+export function executeOjs(markdown: MappedString, source: string): ExecuteResult {
+  const { markdown: out, cellCount, problems } = transformDocument(markdown.value, locatorFor(markdown, source));
+  if (problems.length > 0) throw new Error(formatProblems(problems));
+  const result: ExecuteResult = { markdown: out, supporting: [], filters: [] };
+  if (cellCount > 0) {
+    // A q2-only field, not in Quarto 1's ExecuteResult type.
+    (result as ExecuteResult & { htmlDependencies: unknown[] }).htmlDependencies = [runtimeDependency()];
+  }
+  return result;
+}
 
 const ojsEngine: ExecutionEngineDiscovery = {
   name: "ojs",
@@ -49,7 +97,7 @@ const ojsEngine: ExecutionEngineDiscovery = {
   },
 
   claimsLanguage(language: string): boolean | number | LanguageClaim | null {
-    return language in MODES ? PRIMARY : false;
+    return isOjsLanguage(language) ? PRIMARY : false;
   },
 
   claimsFile(): boolean {
@@ -83,28 +131,7 @@ const ojsEngine: ExecutionEngineDiscovery = {
       },
 
       async execute(opts: ExecuteOptions): Promise<ExecuteResult> {
-        let cells = 0;
-        const markdown = opts.target.markdown.value.replace(CELL, (_m, lang: string, body: string) => {
-          cells++;
-          return (
-            `::: {.ojs-cell data-ojs-mode="${MODES[lang]}"}\n` +
-            "```{.ojs-source .js}\n" +
-            body +
-            "```\n" +
-            ":::"
-          );
-        });
-        const result: ExecuteResult = { markdown, supporting: [], filters: [] };
-        if (cells > 0) {
-          (result as ExecuteResult & { htmlDependencies: unknown[] }).htmlDependencies = [
-            {
-              name: "ojs-spike",
-              stylesheets: [],
-              scripts: [join(extDir, "spike", "probe.js")],
-            },
-          ];
-        }
-        return result;
+        return executeOjs(opts.target.markdown, opts.target.source);
       },
     };
   },

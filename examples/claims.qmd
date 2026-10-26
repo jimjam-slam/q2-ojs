@@ -1,5 +1,5 @@
 ---
-title: "Spike: claims"
+title: "Claims: ojs1, ojs2 and bare ojs"
 ---
 
 Only OJS cells: should resolve to the `ojs` engine alone.
