@@ -1,0 +1,24 @@
+---
+title: "Spike: preview host"
+render-components:
+  - \_extensions/ojs/spike/preview-probe.tsx
+---
+
+A mermaid diagram, which should still draw:
+
+```mermaid
+flowchart LR
+  a --> b
+```
+
+An OJS cell, which the probe should host:
+
+```{ojs2}
+display(1 + 1);
+```
+
+A plain code block:
+
+```python
+print("untouched")
+```

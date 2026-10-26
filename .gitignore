@@ -1,3 +1,6 @@
-q2
+/q2/
+/.tools/
+/examples/.quarto/
 .DS_Store
+node_modules/
 

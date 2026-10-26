@@ -1,0 +1,20 @@
+---
+title: "Spike: claims"
+---
+
+Only OJS cells: should resolve to the `ojs` engine alone.
+
+```{ojs1}
+viewof x = Inputs.range([0, 10], {value: 3})
+```
+
+```{ojs2}
+const y = x * 2;
+display(y);
+```
+
+A bare Quarto 1 cell, which no engine can claim:
+
+```{ojs}
+z = 1
+```

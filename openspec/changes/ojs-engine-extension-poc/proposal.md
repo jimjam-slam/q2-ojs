@@ -33,3 +33,6 @@ Quarto 2 (q2) has no Observable JavaScript (OJS) support, and the team has said 
   - The preview `CodeBlock` override replaces q2's built-in `MermaidCodeBlock`, because the registry merge is a flat spread. This lasts until `components:` preview mounting (q2 strand bd-s73m7at2) lands.
   - Without the extension installed, `{ojs1}`/`{ojs2}` fall back to jupyter and fail with an unhelpful kernel error.
   - Shiny (`server: shiny`) OJS interop is out of scope.
+  - `ojs_define` from R works only when the document declares `engine: [knitr, ojs]`: in an implicit sequence our engine runs first and knitr never sets `ojs_define` up.
+  - `ojs_define` from Python or Julia is unavailable: Quarto 1 injected it into Jupyter kernels, and q2's Jupyter engine doesn't. Adding it to q2's engines is out of scope.
+- **Discussion points this exposes**: OJS can be compiled and run by an extension, but `ojs_define` depends on the *other* engines (a helper inside their runtimes, knitr's detection of OJS cells, and engine order). Possible directions: move `ojs_define` into the user-installed language packages; give engines an ordering hint; and document the `<script type="ojs-define">` payload as a contract between engines.

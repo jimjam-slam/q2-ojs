@@ -29,6 +29,17 @@ The component SHALL compile cell source in the browser with the same Notebook Ki
 - **WHEN** the user types several characters in quick succession in an OJS cell
 - **THEN** the cell is compiled once after typing pauses, not once per keystroke
 
+### Requirement: Duplicate definitions while editing
+Live-preview edits never reach the engine, so the preview SHALL detect a name defined by more than one cell itself, and SHALL show an error on every cell defining it, naming the name. It SHALL NOT define the duplicates in the runtime. When the duplicate is removed, the remaining cell SHALL run normally.
+
+#### Scenario: Duplicate typed in preview
+- **WHEN** the user adds `const x = 2;` in a new cell while another cell defines `x`
+- **THEN** both cells show an error naming `x`, and neither crashes the preview
+
+#### Scenario: Duplicate removed
+- **WHEN** the user deletes one of the two cells defining `x`
+- **THEN** the error clears and the remaining cell runs
+
 ### Requirement: Key agreement with the engine
 For the same cell source and position, the key computed in the preview SHALL equal the key the engine emits at render.
 

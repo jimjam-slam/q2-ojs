@@ -28,6 +28,7 @@ Audience: this is a proof of concept to take into quarto-dev discussion #14877. 
 - Inline `${expr}` interpolation in prose.
 - Quarto 1 cell options beyond `echo` and `output` (no `panel`, `layout`, `fig-cap`/`label` cross-references).
 - Shiny (`server: shiny`) OJS interop.
+- Adding `ojs_define` to q2's Jupyter engine for Python/Julia (spike S8), or changing knitr's OJS detection or engine order (spike S3). These are discussion points, not changes this proof of concept makes.
 - Non-HTML formats (q2 is HTML-first; other formats get the code block).
 - A friendlier error when the extension isn't installed (it's a q2 resolution concern).
 - Publishing the extension or vendoring Notebook Kit for offline use.
@@ -62,7 +63,7 @@ The engine replaces each owned cell with markdown of this shape:
 
 - The **`.ojs-source` CodeBlock** is the echo (CSS hides it when `data-echo="false"`). It is also how the preview finds a cell when its capture is current (D7).
 - **`.ojs-output`** is a placeholder. At runtime the bootstrap puts a runtime-owned output node there; it is never used directly as `state.root` in preview (D5).
-- **`.ojs-def`** holds the Notebook Kit `TranspiledJavaScript` as JSON. It's inert data in every environment, so the static page never compiles in the browser. A cell with a compile error gets an error marker instead of a definition, and the render emits a diagnostic.
+- **`.ojs-def`** holds the Notebook Kit `TranspiledJavaScript` as JSON. It's inert data in every environment, so the static page never compiles in the browser. A compile error fails the render (decided 2026-10-26, because q2 drops TS engine warnings: spike S7), so a rendered page never contains a broken definition.
 
 *Alternative:* RawBlock-only markup. That loses q2's code highlighting and echo handling, and it gives the preview no CodeBlock to host.
 
@@ -95,7 +96,10 @@ The engine replaces each owned cell with markdown of this shape:
 
 - Hosts call only `upsert(key, def | source, hostEl)` and `release(key)`. Deletes always happen before defines, and the whole batch runs synchronously, so the Observable runtime (which defers computation) never sees two definitions of one name, or a missing one.
 - **The runtime owns the output nodes.** The host renders an empty element that React never fills, and the reconciler `appendChild`s that key's output node into it. React's index-keyed re-renders can therefore swap host elements without losing output.
-- **Error policy:** a definition that fails to transpile in preview keeps the last good definition running and shows an error badge on that cell. Static output has no "last good" definition, so it shows the error.
+- **Error policy (decided 2026-10-26; see S7, S8):**
+  - *Render time:* compile errors and names defined in more than one cell fail the render, reported together with `file:line:column`. q2 drops TS engine warnings, so there is no softer option yet.
+  - *Live preview:* the engine isn't involved. A cell that stops compiling keeps its last good definition and shows an error badge. A duplicated name is caught by the preview and shown as an error on each defining cell, and the duplicates are never defined.
+  - *Run time:* Notebook Kit's inspector shows thrown errors, rejections, failed imports and upstream failures in the cell and logs them. Unresolved names are left to the runtime (`RuntimeError: x is not defined`), the only place `ojs_define` names are known. Errors show even with `output: false` or `echo: false`.
 - `runtime.dispose()` runs on page unload or preview navigation, not on AST updates.
 - Static output runs the same reconciler once, on `DOMContentLoaded`, over all `.ojs-cell` elements.
 
@@ -109,11 +113,11 @@ The engine replaces each owned cell with markdown of this shape:
 
 ### D7. Preview host: a `render-components:` `CodeBlock` override
 
-The document lists the extension's generated preview component in `render-components:`. Its `CodeBlock` export handles two cases:
+The document lists the extension's generated preview component in `render-components:` as an escaped path (`\_extensions/ojs/ojs-preview.tsx`; spike S6). The file must be `.tsx`, with no static imports. Its `CodeBlock` export handles two cases:
 - **Capture current:** the AST contains the engine's `.ojs-cell` Div. The override matches the `.ojs-source` block, which carries its own `data-ojs-key` and `data-ojs-mode` (the engine sets them on the source block as well as the Div, since the override only sees the CodeBlock). It transpiles that source in the browser too, so preview never depends on the possibly stale `.ojs-def` payload.
 - **Capture missed or stale:** the AST contains the raw `{ojs1}`/`{ojs2}` CodeBlock. The override computes the key with the shared hash and transpiles in the browser (debounced about 250 ms).
 
-Either way it renders the echo (when `echo` isn't false) plus an empty host, and calls `upsert`/`release`. Any other CodeBlock goes to the built-in `CodeBlock` it imports. It can't reach `MermaidCodeBlock` (see Risks). Hiding the static `.ojs-output`/`.ojs-def` siblings in preview is CSS on `.ojs-cell`.
+Either way it renders the echo (when `echo` isn't false) plus an empty host, and calls `upsert`/`release`. Any other CodeBlock goes to `window.__Q2_PREVIEW_RENDERER__.previewRegistry.CodeBlock` (q2's `MermaidCodeBlock`), so mermaid keeps working. Hiding the static `.ojs-output`/`.ojs-def` siblings in preview is CSS on `.ojs-cell`.
 *Alternative:* `components:` bound to `.ojs-cell`. That's the intended long-term route (one contract, `content: ast`), but it's blocked on bd-s73m7at2. The design keeps the host thin so it can move there.
 
 ### D8. `ojs_define` interop
@@ -123,7 +127,9 @@ The bootstrap reads every `script[type="ojs-define"]` (from `in_header`, which p
 ## Risks / Trade-offs
 
 - [Bare `{ojs}` is unsupported: Quarto 1 documents render their OJS as plain code blocks, silently] → Documented as a compatibility gap. The proposed q2 core change is to drop `"ojs"` from `HANDLED_LANGUAGES`, after which the alias is one more static claim. A filter-based alias (D2 alternative) stays available.
-- [The preview `CodeBlock` override replaces q2's built-in `MermaidCodeBlock` in documents that use it] → Documented. It goes away when bd-s73m7at2 lands or q2 lets overrides hand off to built-ins. Example documents avoid mixing mermaid and OJS.
+- [The preview `CodeBlock` override replaces q2's built-in `MermaidCodeBlock` in documents that use it] → Avoided: the override hands non-OJS blocks to `window.__Q2_PREVIEW_RENDERER__.previewRegistry.CodeBlock`, which is `MermaidCodeBlock` (spike S6). The remaining risk is that this global is an experimental surface q2 might change.
+- [Implicit engine order runs our engine before knitr, so `ojs_define` is never set up (spike S3)] → **Accepted as a limitation (2026-10-26):** documents that use `ojs_define` declare `engine: [knitr, ojs]`. Option (c), an engine-ordering hint or an ownership-aware knitr check, goes to the discussion.
+- [Quarto 1 `require("…")` cells fail: Notebook Kit's stdlib has no `require` (spike S5)] → Supply a `require` builtin backed by jsDelivr when constructing the runtime.
 - [Without the extension, `{ojs1}`/`{ojs2}` fall back to jupyter with a confusing kernel error] → Documented. Install instructions go in the README. The fix belongs in q2 (an "unclaimed language" hint).
 - [Keys must agree between Node and browser] → One shared hash/normalization module, plus a test that compares engine-emitted keys with browser-computed keys on the same fixtures.
 - [Preview evaluates transpiled bodies (`new Function`/blob import); a future preview CSP could block it] → Acceptable for a proof of concept. Noted for the discussion.
@@ -138,6 +144,44 @@ Not applicable: this is a new, standalone extension. To roll back, remove the ex
 ## Open Questions
 
 - Can an extension contribute `render-components:` (or, later, `components:`) so documents don't have to list it?
-- Does `TsHtmlDependency.scripts` support `type="module"`, or only classic scripts?
-- Where do extension files live in the preview's VFS? Could the preview load the bundle from there instead of a CDN?
 - Should the default for `echo` follow Quarto 1 (shown) or Observable (hidden)? The proof of concept follows Quarto 1.
+
+## Spike findings (2026-10-26)
+
+All run against q2 nightly `0.36.0-nightly.20261024`, built from `ab976ef21` (the same commit as `./q2`), with Node 24.22.1 and Notebook Kit 2.8.0.
+
+**S1. Static claims resolve; knitr and jupyter cede (task 1.3).** `examples/spike-claims.qmd` (`{ojs1}`, `{ojs2}` and a bare `{ojs}`, with no `engine:` key) resolved to the `ojs` engine alone. `{ojs1}` became `data-ojs-mode="ojs"` and `{ojs2}` became `data-ojs-mode="js"`. The bare `{ojs}` cell rendered as `<pre class="{ojs}">`, untouched and with no warning (the compatibility gap, confirmed).
+
+**S2. Extension discovery.** A single file only searches its own folder's `_extensions/`. A project searches from the file up to the project root. `examples/` is now a project whose `_extensions/ojs` is a symlink to the real extension; the engine path follows the symlink.
+
+**S3. Implicit engine order is `[ojs, knitr]`, which breaks `ojs_define` (task 1.3).** q2 puts extension engines before built-ins in an implicit sequence (`resolution.rs:89-105`). Our engine therefore rewrites the `{ojs2}` fences before knitr runs. Knitr's `needs_ojs` check (a regex over the markdown it receives, `execute.R:164`) then finds no `{ojs…}` fence and never defines `ojs_define()`, so R fails with `could not find function "ojs_define"`. With `engine: [knitr, ojs]` in the front matter, everything works: knitr defines `ojs_define`, the `<script type="ojs-define">` payload lands in `<head>`, and the `.ojs-cell` renders. `examples/spike-knitr-order.qmd` is the working case and `examples/spike-knitr.qmd` the failing one. Options:
+  - (a) Document `engine: [knitr, ojs]` for documents that use `ojs_define`. No tricks, but it's a burden on authors.
+  - (b) Keep a marker line in the engine's output that knitr's regex detects but its chunk parser ignores (for example, a line beginning `` ```{ojs} `` followed by other text, inside a raw HTML comment). It works implicitly, but depends on knitr's private regexes.
+  - (c) Raise it upstream: let an engine declare that it runs after other engines, or have knitr's detection consult ownership instead of the markdown. Either suits the discussion regardless of whether we pick (a) or (b).
+
+**S4. Engine html dependencies are classic scripts only (task 1.4).** `TsHtmlDependency` is `{name, stylesheets: string[], scripts: string[]}`. The template can emit attributes (`scripts.attribs`), but the TS wire carries none. The output was `<script src="…_files/libs/ojs-spike/probe.js">` in `<head>`, with the file copied to `libs/<name>/`. D6's IIFE choice stands, and the bootstrap must wait for `DOMContentLoaded` because it runs before the body is parsed. Relative script paths resolve against `libDir`, so the engine passes absolute paths.
+
+**S5. Notebook Kit covers Observable 1.0 imports but not `require` (task 1.5).** In a browser, with Notebook Kit's runtime loaded from `https://cdn.jsdelivr.net/npm/@observablehq/notebook-kit@2.8.0/dist/src/runtime/index.js/+esm`:
+  - `import {chart} from "@d3/bar-chart"` resolved to a live `<svg>`, through `api.observablehq.com/@d3/bar-chart.js?v=4` and the runtime's `@variable` builtin.
+  - `viewof` and a dependent cell worked (`n * 10` gave `40`), and a `js`-mode `display()` worked.
+  - **`require` is not defined.** The stdlib instead provides `d3`, `Plot`, `Inputs`, `_`, `htl`, `md`, `tex`, `aq`, `duckdb`, `vl` and others directly. Quarto 1 documents using `require("…")` need a `require` builtin passed to `new NotebookRuntime(builtins)`.
+  - `npm:` specifiers are rewritten to jsDelivr in `js` mode. In `ojs` mode a dynamic `import("npm:…")` is left raw, which is minor since 1.0 syntax predates `npm:`.
+  - **Static imports in `ojs` mode are notebook imports only**, as in Observable 1.0 and Quarto 1. `import {scaleLinear} from "npm:d3"` fetches the module but links it as a notebook, so in the browser it fails with `scaleLinear is not defined`; the same import in `js` mode works. `import * as d3 from …` is a parse error in `ojs` mode. Notebook imports, including `import {chart} with {pdata as data} from "@d3/zoomable-sunburst"`, transpile correctly. In `{ojs1}`, libraries come from the stdlib built-ins, a dynamic `import("https://…/+esm")` (verified working), or `require` (once shimmed).
+  - The jsDelivr `+esm` route for the preview (D6) works.
+
+**S6. The `render-components:` host works, and the Mermaid clash is avoidable (task 1.6).** In `q2 preview`, a `CodeBlock` override received every code block, hosted the raw `{ojs2}` cell, and handed the rest to `window.__Q2_PREVIEW_RENDERER__.previewRegistry.CodeBlock`. That is `MermaidCodeBlock`, and the mermaid diagram still drew. Constraints found:
+  - The file must be **`.tsx`**: q2 syncs only `.tsx` for `render-components:` (`quarto-preview/src/config.rs:541`, `quarto-hub/src/discovery.rs:143`), and other extensions are silently ignored. The content goes through Babel (TypeScript + React presets) and loads as a blob-URL ES module with `window.React` as a global. So: no static imports (the TS preset drops unused ones, and blob URLs can't resolve relative paths); dynamic `import()` of absolute URLs is fine.
+  - Front-matter strings are parsed as markdown. A leading `_` opens emphasis (warning `Q-1-20`), and `!str` makes the entry invisible to the preview's path extraction. **Escape it**: `render-components: [\_extensions/ojs/ojs-preview.tsx]` works.
+  - The file has to be inside the project tree. A symlink that resolves outside it isn't synced, so the dev `examples/_extensions/ojs` symlink must become a copied build output for preview testing.
+  - In project mode, a component file created after `q2 preview` starts isn't picked up until a restart.
+  - Live preview shows `{ojs…}` cells as raw source with a "Code has changed since the last capture. Re-execute" banner after any edit. That confirms D7's raw-cell path is the common case.
+
+**S7. Errors and warnings (2026-10-26).**
+  - *Render-time reporting.* q2 drops TS engine warnings: `ts_engine.rs:660` hardcodes `warnings: Vec::new()` (related open strand bd-yd94iyq9). A `[WARN]`-prefixed stderr line becomes a `tracing` event that shows only with `RUST_LOG=engine_host=warn`: not at default verbosity, not with `-v`, and not counted by `--strict`. A thrown error *is* shown: `Error: Execution failed in ojs: <our message>`, and that file's render fails. So today an engine can either fail the render or stay silent.
+  - *What compiling gives us.* Notebook Kit throws `SyntaxError` with `loc: {line, column}` within the cell. TypeScript cells are not type-checked (types are stripped). Transpiling also yields each cell's declarations and unbound references, and `defaultGlobals` lists 84 browser globals. Notebook Kit has no checker or linter beyond this (its CLI has `build`, `download`, `preview` and `query`).
+  - *Run time, observed in a browser.* The inspector shows a thrown error, a rejected promise, a failed `import()` and an undefined reference (`RuntimeError: y is not defined`) inside the cell, styled `.observablehq--error`, and also calls `console.error`. A cell depending on a failed cell shows `RuntimeError: <upstream message>`. **The same name declared in two cells shows nothing** unless another cell references it. An error thrown later from a callback (`setTimeout`) reaches only `window.onerror`.
+
+**S8. What a render-time check can see of `ojs_define` data (2026-10-26).**
+  - *R (knitr).* In the required `[knitr, ojs]` order, our engine receives knitr's output markdown. The R **source** is there only when echoed (` ```{.r .cell-code}` containing `ojs_define(cars = …)`; `echo: false` removes it). The **payload** is not: knitr puts `<script type="ojs-define">` into its header includes, which q2 collects separately and doesn't pass to later engines (`rendered.includes.header` is still `[]` when our engine runs). It shows up only in the final HTML.
+  - *Python and Julia (Jupyter).* Quarto 1 injects `ojs_define` into the kernel (`quarto-cli/src/resources/jupyter/lang/python/setup.py`, `…/julia/setup.jl`). It displays `<script type="ojs-define">{"contents":[{"name":…,"value":…}]}</script>` as **cell output**, which would land in the markdown a later engine receives. But **q2's Jupyter engine has no kernel setup code and no `ojs_define`** (checked in source; not run, as Jupyter isn't installed here). So Python/Julia `ojs_define` looks unavailable in q2 today: another item for the discussion.
+  - *Browser.* The runtime sees every `script[type="ojs-define"]` on the page, so names can always be checked at run time.

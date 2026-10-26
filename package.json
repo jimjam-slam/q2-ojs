@@ -1,0 +1,11 @@
+{
+  "name": "q2-ojs",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@observablehq/notebook-kit": "2.8.0"
+  }
+}

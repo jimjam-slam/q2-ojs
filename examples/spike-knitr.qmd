@@ -1,0 +1,12 @@
+---
+title: "Spike: knitr + ojs2"
+---
+
+```{r}
+ojs_define(cars = head(mtcars, 3))
+nrow(mtcars)
+```
+
+```{ojs2}
+display(cars);
+```

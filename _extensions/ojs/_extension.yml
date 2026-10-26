@@ -1,0 +1,19 @@
+title: Observable JavaScript (Notebook Kit)
+author: James Goldie
+version: 0.0.1
+contributes:
+  engines:
+    - path: dist/ojs-engine.js
+      # Static declarations for q2's pass-1 engine resolution: `{ojs1}` and
+      # `{ojs2}` resolve to this engine without loading it. Bare `{ojs}` can't
+      # be claimed: q2 removes it from the language scan (HANDLED_LANGUAGES).
+      name: ojs
+      claims:
+        ojs1:
+          kind: primary
+          priority: 1
+        ojs2:
+          kind: primary
+          priority: 1
+      file-extensions: []
+      claims-files: []
