@@ -14,8 +14,14 @@ import { transpose } from "./data.ts";
 
 export type Builtins = Record<string, () => unknown>;
 
+type Generators = { width(target: Element): unknown };
+
 export const builtins: Builtins = {
   ...(library as Builtins),
+  // Notebook Kit measures `document.querySelector("main") ?? document.body`,
+  // looked up when its module loads. On a rendered page the runtime loads in
+  // <head>, before either exists, so look the element up on first use.
+  width: () => ((library as Builtins).Generators() as Generators).width(document.querySelector("main") ?? document.body),
   require: () => d3Require,
   // Quarto 1's helper for column-oriented `ojs_define` data frames.
   transpose: () => transpose,

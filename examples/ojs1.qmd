@@ -1,0 +1,62 @@
+---
+title: "Observable 1.0 syntax: `{ojs1}`"
+---
+
+`{ojs1}` cells use the syntax of original Observable notebooks and Quarto 1's
+`{ojs}` cells, compiled with Notebook Kit's `ojs` mode.
+
+## Inputs with `viewof`
+
+```{ojs1}
+viewof radius = Inputs.range([5, 50], {value: 20, step: 1, label: "Radius"})
+```
+
+```{ojs1}
+area = Math.round(Math.PI * radius ** 2)
+```
+
+```{ojs1}
+html`<svg width=120 height=120><circle cx=60 cy=60 r=${radius} fill="steelblue"></circle></svg>`
+```
+
+## Mutable state
+
+```{ojs1}
+mutable clicks = 0
+```
+
+```{ojs1}
+{
+  const button = html`<button>Click me</button>`;
+  button.onclick = () => ++mutable clicks;
+  return button;
+}
+```
+
+```{ojs1}
+md`The button has been clicked **${clicks}** times.`
+```
+
+## Libraries
+
+The standard library provides `d3`, `Plot`, `Inputs` and others. Quarto 1's
+`require` works too, for UMD packages on npm:
+
+```{ojs1}
+d3array = require("d3-array@3")
+```
+
+```{ojs1}
+d3array.sum([1, 2, 3, 4])
+```
+
+Static `import` in `{ojs1}` cells loads Observable notebooks, as it did in
+Quarto 1:
+
+```{ojs1}
+import {chart} from "@d3/bar-chart"
+```
+
+```{ojs1}
+chart
+```

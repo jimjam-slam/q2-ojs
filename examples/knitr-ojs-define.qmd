@@ -1,6 +1,8 @@
 ---
 title: "ojs_define from R (knitr runs first)"
 engine: [knitr, ojs]
+render-components:
+  - \_extensions/ojs/dist/ojs-preview.tsx
 ---
 
 ```{r}

@@ -1,0 +1,47 @@
+---
+title: "Observable JavaScript: `{ojs2}`"
+---
+
+`{ojs2}` cells are Observable JavaScript, the language of Observable Notebooks
+2.0: plain JavaScript where top-level declarations are reactive and
+`display()` shows values. They compile with Notebook Kit's `js` mode.
+
+## Declarations and `display()`
+
+```{ojs2}
+const temperatures = [12, 15, 19, 23, 21, 17];
+const mean = temperatures.reduce((a, b) => a + b) / temperatures.length;
+display(`Mean: ${mean.toFixed(1)}°`);
+```
+
+## Inputs with `view()`
+
+```{ojs2}
+const threshold = view(Inputs.range([10, 25], {value: 18, step: 1, label: "Threshold"}));
+```
+
+```{ojs2}
+const warm = temperatures.filter((t) => t >= threshold);
+display(`${warm.length} of ${temperatures.length} days at or above ${threshold}°`);
+```
+
+## Plot
+
+```{ojs2}
+display(
+  Plot.plot({
+    height: 200,
+    marks: [
+      Plot.barY(temperatures.map((t, day) => ({day, t})), {x: "day", y: "t", fill: (d) => d.t >= threshold ? "tomato" : "steelblue"}),
+      Plot.ruleY([threshold], {stroke: "black"}),
+    ],
+  }),
+);
+```
+
+## npm imports
+
+```{ojs2}
+import {median} from "npm:d3-array";
+display(`Median: ${median(temperatures)}°`);
+```

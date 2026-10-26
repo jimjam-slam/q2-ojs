@@ -54,14 +54,14 @@
 
 ## 6. Examples and end-to-end verification
 
-- [ ] 6.1 Examples: `ojs1` (viewof slider, mutable, named cells), `ojs2` (display, top-level declarations), a knitr + `ojs2` document using `ojs_define`, and a compile-error document
-- [ ] 6.2 `q2 render` each example; inspect the HTML and check it in a browser (cells run, inputs work, the error doc shows the diagnostic and the other cells still run)
-- [ ] 6.3 `q2 preview` each example: edit prose (no recompute), edit a cell (updates without re-execute), insert a paragraph above cells (no recompute), type a syntax error (last good output kept)
-- [ ] 6.3b Observe a syntax error after clicking Re-execute in live preview, and after a save in `q2 preview --static`; record what the page shows, and whether R output from the same run is lost. If it's poor, consider softening via `isInteractiveSession`
-- [ ] 6.4 Record the invocations and observed output for each check in a verification notes file
+- [x] 6.1 Examples: `ojs1` (viewof slider, mutable, named cells), `ojs2` (display, top-level declarations), a knitr + `ojs2` document using `ojs_define`, and a compile-error document (`examples/ojs1.qmd`, `ojs2.qmd`, `knitr-ojs-define.qmd`, `preview.qmd`; error documents in `test/e2e/`)
+- [x] 6.2 `q2 render` each example; inspect the HTML and check it in a browser (cells run, inputs work, the error doc shows the diagnostic and the other cells still run) (compile errors now fail the render, so the error documents check the diagnostic; found and fixed the `width` built-in, see verification notes)
+- [x] 6.3 `q2 preview` each example: edit prose (no recompute), edit a cell (updates without re-execute), insert a paragraph above cells (no recompute), type a syntax error (last good output kept) (with `examples/preview.qmd`, during group 5; S14)
+- [x] 6.3b Observe a syntax error after clicking Re-execute in live preview, and after a save in `q2 preview --static`; record what the page shows, and whether R output from the same run is lost. If it's poor, consider softening via `isInteractiveSession` (multi-engine capture failures crash q2's preview UI; `--static` shows the unexecuted page with the error only in the terminal; kept failing the render; see `docs/verification.md`)
+- [x] 6.4 Record the invocations and observed output for each check in a verification notes file (`docs/verification.md`)
 
 ## 7. Write-up for the discussion
 
-- [ ] 7.1 README: install, usage, the `ojs1`/`ojs2` naming and the Notebook Kit modes they map to, and `render-components:` setup
-- [ ] 7.2 Document the gaps: bare `{ojs}` (compatibility gap and the proposed `HANDLED_LANGUAGES` change), the `MermaidCodeBlock` override clash, the unhelpful error without the extension, no Shiny, and what the spikes found
-- [ ] 7.3 Draft a summary for quarto-dev discussion #14877: what worked, which q2 surfaces were used, and the small core changes that would remove each gap. Include the cross-engine points: who provides `ojs_define` (knitr does; Jupyter doesn't), knitr's OJS detection and engine order, the `ojs-define` payload as a contract, the bare `{ojs}` alias, and a warning channel for TS engines
+- [x] 7.1 README: install, usage, the `ojs1`/`ojs2` naming and the Notebook Kit modes they map to, and `render-components:` setup (`README.md`)
+- [x] 7.2 Document the gaps: bare `{ojs}` (compatibility gap and the proposed `HANDLED_LANGUAGES` change), the `MermaidCodeBlock` override clash, the unhelpful error without the extension, no Shiny, and what the spikes found (README "Known gaps"; the mermaid clash turned out avoidable, S6)
+- [x] 7.3 Draft a summary for quarto-dev discussion #14877: what worked, which q2 surfaces were used, and the small core changes that would remove each gap. Include the cross-engine points: who provides `ojs_define` (knitr does; Jupyter doesn't), knitr's OJS detection and engine order, the `ojs-define` payload as a contract, the bare `{ojs}` alias, and a warning channel for TS engines (`docs/discussion-14877.md`, a draft to paste; not posted)
